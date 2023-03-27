@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 
 const Login = () => {
@@ -7,24 +7,56 @@ const Login = () => {
   const { setJwtToken } = useOutletContext()
   const { setAlertClassName } = useOutletContext()
   const { setAlertMessage } = useOutletContext()
+  const { toggleRefresh } = useOutletContext()
+  const { jwtToken } = useOutletContext()
 
   const navigate = useNavigate()
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    console.log('email/pass', email, password)
-    if (email === 'admin@example.com') {
-      setJwtToken('abc')
-      setAlertClassName('d-none')
-      setAlertMessage('')
-      navigate('/')
-    } else {
-      setAlertClassName(
-        'alert-danger bg-red-300 p-4 text-red-700 rounded-md mb-4'
-      )
-      setAlertMessage('Invalid credentials')
+
+    // build the request payload
+    let payload = {
+      email: email,
+      password: password,
     }
+
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    }
+
+    fetch(`/authenticate`, requestOptions)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.error) {
+          setAlertClassName('bg-red-200 p-4 text-red-700 rounded-md mb-4')
+          setAlertMessage(data.message)
+        } else {
+          setJwtToken(data.access_token)
+          setAlertClassName('d-none')
+          setAlertMessage('')
+          toggleRefresh(true)
+          navigate('/')
+        }
+      })
+      .catch((error) => {
+        setAlertClassName('bg-red-200 p-4 text-red-700 rounded-md mb-4')
+        setAlertMessage(error)
+      })
   }
+
+  useEffect(() => {
+    if (jwtToken) {
+      navigate('/')
+      return
+    }
+  }, [jwtToken, navigate])
+
   return (
     <>
       <div className="text-center">
